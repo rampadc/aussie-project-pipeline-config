@@ -1,0 +1,125 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  annotations:
+    manifestival: new
+    tekton.dev/displayName: s2i java 11
+    tekton.dev/pipelines.minVersion: 0.11.3
+    tekton.dev/tags: s2i, java, workspace
+  labels:
+    app.kubernetes.io/version: "0.1"
+    operator.tekton.dev/provider-type: redhat
+  name: s2i-java-11
+spec:
+  description: s2i-java-11 task clones a Git repository and builds and pushes a container
+    image using S2I and a Java 11 builder image.
+  params:
+  - default: .
+    description: The location of the path to run s2i from
+    name: PATH_CONTEXT
+    type: string
+  - default: "true"
+    description: Verify the TLS on the registry endpoint (for push/pull to a non-TLS
+      registry)
+    name: TLSVERIFY
+    type: string
+  - default: ""
+    description: Additional Maven arguments
+    name: MAVEN_ARGS_APPEND
+    type: string
+  - default: "false"
+    description: Remove the Maven repository after the artifact is built
+    name: MAVEN_CLEAR_REPO
+    type: string
+  - default: ""
+    description: The base URL of a mirror used for retrieving artifacts
+    name: MAVEN_MIRROR_URL
+    type: string
+  - description: Location of the repo where image has to be pushed
+    name: IMAGE
+    type: string
+  steps:
+  - args:
+    - |-
+      echo "MAVEN_CLEAR_REPO=$(params.MAVEN_CLEAR_REPO)" > env-file
+
+      [[ '$(params.MAVEN_ARGS_APPEND)' != "" ]] &&
+        echo "MAVEN_ARGS_APPEND=$(params.MAVEN_ARGS_APPEND)" >> env-file
+
+      [[ '$(params.MAVEN_MIRROR_URL)' != "" ]] &&
+        echo "MAVEN_MIRROR_URL=$(params.MAVEN_MIRROR_URL)" >> env-file
+
+      echo "Generated Env file"
+      echo "------------------------------"
+      cat env-file
+      echo "------------------------------"
+    command:
+    - /bin/sh
+    - -c
+    image: registry.redhat.io/ocp-tools-43-tech-preview/source-to-image-rhel8@sha256:9c761a0a0bb607913fbc04d3d435c70a6f90900583b52bd0e6a6187dad3f90cb
+    name: gen-env-file
+    volumeMounts:
+    - mountPath: /env-params
+      name: envparams
+    workingDir: /env-params
+  - command:
+    - s2i
+    - build
+    - $(params.PATH_CONTEXT)
+    - registry.access.redhat.com/openjdk/openjdk-11-rhel7
+    - --image-scripts-url
+    - image:///usr/local/s2i
+    - --as-dockerfile
+    - /gen-source/Dockerfile.gen
+    - --environment-file
+    - /env-params/env-file
+    image: registry.redhat.io/ocp-tools-43-tech-preview/source-to-image-rhel8@sha256:9c761a0a0bb607913fbc04d3d435c70a6f90900583b52bd0e6a6187dad3f90cb
+    name: generate
+    volumeMounts:
+    - mountPath: /gen-source
+      name: gen-source
+    - mountPath: /env-params
+      name: envparams
+    workingDir: $(workspaces.source.path)
+  - command:
+    - buildah
+    - bud
+    - --tls-verify=$(params.TLSVERIFY)
+    - --layers
+    - --storage-driver=vfs
+    - -f
+    - /gen-source/Dockerfile.gen
+    - -t
+    - $(params.IMAGE)
+    - .
+    image: registry.redhat.io/rhel8/buildah@sha256:180c4d9849b6ab0e5465d30d4f3a77765cf0d852ca1cb1efb59d6e8c9f90d467
+    name: build
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: /var/lib/containers
+      name: varlibcontainers
+    - mountPath: /gen-source
+      name: gen-source
+    workingDir: /gen-source
+  - command:
+    - buildah
+    - push
+    - --tls-verify=$(params.TLSVERIFY)
+    - --storage-driver=vfs
+    - $(params.IMAGE)
+    - docker://$(params.IMAGE)
+    image: registry.redhat.io/rhel8/buildah@sha256:180c4d9849b6ab0e5465d30d4f3a77765cf0d852ca1cb1efb59d6e8c9f90d467
+    name: push
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: /var/lib/containers
+      name: varlibcontainers
+  volumes:
+  - name: varlibcontainers
+  - name: gen-source
+  - name: envparams
+  workspaces:
+  - mountPath: /workspace/source
+    name: source

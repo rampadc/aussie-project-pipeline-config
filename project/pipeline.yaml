@@ -5,10 +5,8 @@ metadata:
 spec:
   workspaces:
     - name: pipeline-shared-data
-      description: |
-        This workspace stores the cloned repository and is available to all steps
   params:
-    - name: git-url
+    - name: git-source-url
       type: string
       description: source respository
       default: https://github.com/rampadc/nationalparks.git
@@ -42,7 +40,7 @@ spec:
     - name: clone-repository
       params:
         - name: url
-          value: $(params.git-url)
+          value: $(params.git-source-url)
       taskRef:
         kind: ClusterTask
         name: git-clone
@@ -52,7 +50,7 @@ spec:
     - name: build
       params:
         - name: IMAGE
-          value: $(params.image-repo)
+          value: $(params.image-repo):$(tasks.clone-repository.results.commit)
         - name: TLSVERIFY
           value: 'false'
       runAfter:
@@ -63,17 +61,39 @@ spec:
       workspaces:
         - name: source
           workspace: pipeline-shared-data
-    - name: deploy-to-dev
-      params:
-        - name: SCRIPT
-          value: kubectl $@
-        - name: ARGS
-          value:
-            - rollout
-            - status
-            - deploy/$(params.app-name)
-      runAfter:
-        - build
+    - name: kustomize
       taskRef:
-        kind: ClusterTask
-        name: openshift-client
+        kind: Task
+        name: kustomize-build
+      params:
+      - name: image-with-tag
+        # value: image-registry.openshift-image-registry.svc:5000/aussie-project/nationalparks:464cfd7f59f1912afb0c6fe556201dfb9a9f9907
+        value: $(params.image-repo):$(tasks.clone-repository.results.commit)
+      runAfter:
+      - build
+      workspaces:
+      - name: source
+        workspace: pipeline-shared-data
+    - name: gitops
+      taskRef:
+        kind: Task
+        name: gitops
+      workspaces:
+      - name: source
+        workspace: pipeline-shared-data
+      params:
+      - name: app-name
+        value: "$(params.app-name)"
+      - name: sha
+        value: "$(tasks.clone-repository.results.commit)"
+      runAfter:
+      - kustomize
+    - name: apply-manifests
+      taskRef:
+        name: apply-manifests
+      workspaces:
+      - name: source
+        workspace: pipeline-shared-data
+      runAfter:
+      - kustomize
+      

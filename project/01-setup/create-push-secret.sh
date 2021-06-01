@@ -1,0 +1,1 @@
+oc create secret generic git-credentials --from-literal=pat=$PAT_SECRET
