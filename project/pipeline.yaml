@@ -1,0 +1,79 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: pipeline-shared-data
+      description: |
+        This workspace stores the cloned repository and is available to all steps
+  params:
+    - name: git-url
+      type: string
+      description: source respository
+      default: https://github.com/rampadc/nationalparks.git
+    - name: image-repo
+      type: string
+      description: Docker image name
+      default: image-registry.openshift-image-registry.svc:5000/aussie-project/nationalparks
+    - name: app-name
+      type: string
+      default: nationalparks
+  tasks:
+    - name: create-database
+      params:
+      - name: helm_repo
+        value: https://charts.bitnami.com/bitnami
+      - name: chart_name
+        value: bitnami/mongodb
+      - name: release_version
+        value: 10.16.4
+      - name: release_name
+        value: my-mongo
+      - name: release_namespace
+        value: aussie-project
+      - name: overwrite_values # TODO: make this generic
+        value: "auth.rootPassword=mongodb,auth.username=mongodb,auth.password=mongodb,auth.database=mongodb,service.fullnameOverride=mongodb-nationalparks,persistence.enabled=false,serviceAccount.name=root-mongodb,serviceAccount.create=false"
+      - name: helm_version
+        value: latest
+      taskRef:
+        kind: ClusterTask
+        name: helm-upgrade-from-repo
+    - name: clone-repository
+      params:
+        - name: url
+          value: $(params.git-url)
+      taskRef:
+        kind: ClusterTask
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: pipeline-shared-data
+    - name: build
+      params:
+        - name: IMAGE
+          value: $(params.image-repo)
+        - name: TLSVERIFY
+          value: 'false'
+      runAfter:
+        - clone-repository
+      taskRef:
+        kind: ClusterTask
+        name: s2i-java-11
+      workspaces:
+        - name: source
+          workspace: pipeline-shared-data
+    - name: deploy-to-dev
+      params:
+        - name: SCRIPT
+          value: kubectl $@
+        - name: ARGS
+          value:
+            - rollout
+            - status
+            - deploy/$(params.app-name)
+      runAfter:
+        - build
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
