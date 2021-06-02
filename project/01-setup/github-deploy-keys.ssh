@@ -1,0 +1,17 @@
+# push manifest using pipeline
+
+ssh-keygen -t ed25519 -f aussie-project-nationalpark-app-push -N ''
+
+# Apply `aussie-project-nationalpark-gitops-app.pub` to GitHub repository
+
+oc create secret generic github-deploy-key-nationalpark-app --from-file=ssh-privatekey=aussie-project-nationalpark-gitops-push --type=kubernetes.io/ssh-auth
+oc patch secret github-deploy-key-nationalpark-app --type merge -p '{"metadata":{"annotations":{"tekton.dev/git-0": "github.com"}}}'
+oc patch sa pipeline -p '{"secrets": [{"name": "github-deploy-key-nationalpark-app"}]}'
+
+# FOLLOWING NOT APPLIED AND POSSIBLY TO BE DELETED
+# push manifest using argocd gitoops
+# duplicate pipeline to pipeline-gitops and patch it again
+# oc get sa pipeline -o yaml|sed -e 's/^  name: pipeline/  name: pipeline-gitops/' |oc apply -f -
+# oc patch sa pipeline-gitops -p '{"secrets": [{"name": "github-deploy-key-nationalpark-app"}]}'
+
+

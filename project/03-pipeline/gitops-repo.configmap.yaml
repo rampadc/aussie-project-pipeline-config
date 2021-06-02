@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: gitops-repo
 data:
-  protocol: https
+  protocol: git
   host: github.com
   org: rampadc
   repo: aussie-project-gitops

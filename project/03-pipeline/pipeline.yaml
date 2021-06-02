@@ -20,20 +20,20 @@ spec:
   tasks:
     - name: create-database
       params:
-      - name: helm_repo
-        value: https://charts.bitnami.com/bitnami
-      - name: chart_name
-        value: bitnami/mongodb
-      - name: release_version
-        value: 10.16.4
-      - name: release_name
-        value: my-mongo
-      - name: release_namespace
-        value: aussie-project
-      - name: overwrite_values # TODO: make this generic
-        value: "auth.rootPassword=mongodb,auth.username=mongodb,auth.password=mongodb,auth.database=mongodb,service.fullnameOverride=mongodb-nationalparks,persistence.enabled=false,serviceAccount.name=root-mongodb,serviceAccount.create=false"
-      - name: helm_version
-        value: latest
+        - name: helm_repo
+          value: https://charts.bitnami.com/bitnami
+        - name: chart_name
+          value: bitnami/mongodb
+        - name: release_version
+          value: 10.16.4
+        - name: release_name
+          value: my-mongo
+        - name: release_namespace
+          value: aussie-project
+        - name: overwrite_values # TODO: make this generic
+          value: "auth.rootPassword=mongodb,auth.username=mongodb,auth.password=mongodb,auth.database=mongodb,service.fullnameOverride=mongodb-nationalparks,persistence.enabled=false,serviceAccount.name=root-mongodb,serviceAccount.create=false"
+        - name: helm_version
+          value: latest
       taskRef:
         kind: ClusterTask
         name: helm-upgrade-from-repo
@@ -52,7 +52,7 @@ spec:
         - name: IMAGE
           value: $(params.image-repo):$(tasks.clone-repository.results.commit)
         - name: TLSVERIFY
-          value: 'false'
+          value: "false"
       runAfter:
         - clone-repository
       taskRef:
@@ -66,34 +66,33 @@ spec:
         kind: Task
         name: kustomize-build
       params:
-      - name: image-with-tag
-        # value: image-registry.openshift-image-registry.svc:5000/aussie-project/nationalparks:464cfd7f59f1912afb0c6fe556201dfb9a9f9907
-        value: $(params.image-repo):$(tasks.clone-repository.results.commit)
+        - name: image-with-tag
+          # value: image-registry.openshift-image-registry.svc:5000/aussie-project/nationalparks:4dc6420f627358819dba2300b7696f1f1bb24c15
+          value: $(params.image-repo):$(tasks.clone-repository.results.commit)
       runAfter:
-      - build
+        - build
       workspaces:
-      - name: source
-        workspace: pipeline-shared-data
+        - name: source
+          workspace: pipeline-shared-data
     - name: gitops
       taskRef:
         kind: Task
         name: gitops
       workspaces:
-      - name: source
-        workspace: pipeline-shared-data
+        - name: source
+          workspace: pipeline-shared-data
       params:
-      - name: app-name
-        value: "$(params.app-name)"
-      - name: sha
-        value: "$(tasks.clone-repository.results.commit)"
+        - name: app-name
+          value: "$(params.app-name)"
+        - name: sha
+          value: "$(tasks.clone-repository.results.commit)"
       runAfter:
-      - kustomize
+        - kustomize
     - name: apply-manifests
       taskRef:
         name: apply-manifests
       workspaces:
-      - name: source
-        workspace: pipeline-shared-data
+        - name: source
+          workspace: pipeline-shared-data
       runAfter:
-      - kustomize
-      
+        - kustomize

@@ -21,7 +21,7 @@ spec:
       workspaces:
         - name: pipeline-shared-data
           persistentVolumeClaim:
-            claimName: pipeline-storage
+            claimName: cache
       params:
       - name: git-url
         value: $(tt.params.git-repo-url)
