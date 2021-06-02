@@ -23,12 +23,13 @@ spec:
               fieldPath: metadata.namespace
         # - name: HOME
         #   value: /home/devops
-        - name: GIT_PERSONAL_ACCESS_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: git-credentials
-              key: pat
-              optional: true
+        # - name: GIT_PERSONAL_ACCESS_TOKEN
+        #   valueFrom:
+        #     secretKeyRef:
+        #       # name: git-credentials
+        #       name: github-deploy-key-nationalpark-app
+        #       key: pat
+        #       optional: true
         - name: GIT_PROTOCOL
           valueFrom:
             configMapKeyRef:
@@ -76,11 +77,15 @@ spec:
           PROTOCOL="https"
         fi
 
+        sudo apk add --update --no-cache openssh
         git config --global user.email "gitops@cloudnativetoolkit.dev"
         git config --global user.name "Pipeline"
-        echo "git clone ${BRANCH_CMD} ${PROTOCOL}://<PERSONAL_ACCESS_TOKEN>@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+        # echo "git clone ${BRANCH_CMD} ${PROTOCOL}@<PERSONAL_ACCESS_TOKEN>@${GIT_HOST}:${GIT_ORG}/${GIT_REPO}"
+        echo "git clone ${BRANCH_CMD} ${PROTOCOL}@${GIT_HOST}:${GIT_ORG}/${GIT_REPO}.git"
 
-        GIT_URL="${PROTOCOL}://${GIT_PERSONAL_ACCESS_TOKEN}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+        # git@github.com:rampadc/aussie-project-gitops.git
+        # GIT_URL="${PROTOCOL}://${GIT_PERSONAL_ACCESS_TOKEN}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+        GIT_URL="${PROTOCOL}@${GIT_HOST}:${GIT_ORG}/${GIT_REPO}.git"
         git clone ${BRANCH_CMD} ${GIT_URL} gitops_cd
         cd gitops_cd
 

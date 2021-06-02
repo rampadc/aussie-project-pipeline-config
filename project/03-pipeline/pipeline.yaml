@@ -9,7 +9,7 @@ spec:
     - name: git-source-url
       type: string
       description: source respository
-      default: https://github.com/rampadc/nationalparks.git
+      default: https://github.com/rampadc/nationalparks.git 
     - name: image-repo
       type: string
       description: Docker image name
@@ -67,7 +67,7 @@ spec:
         name: kustomize-build
       params:
       - name: image-with-tag
-        # value: image-registry.openshift-image-registry.svc:5000/aussie-project/nationalparks:464cfd7f59f1912afb0c6fe556201dfb9a9f9907
+        # value: image-registry.openshift-image-registry.svc:5000/aussie-project/nationalparks:4dc6420f627358819dba2300b7696f1f1bb24c15
         value: $(params.image-repo):$(tasks.clone-repository.results.commit)
       runAfter:
       - build
