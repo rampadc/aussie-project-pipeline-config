@@ -15,7 +15,7 @@ spec:
       description: contains the cloned git repo
   steps:
     - name: gitops
-      image: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+      image: quay.io/adam_slomoi/ibmcloud-dev:v2.0.4
       env:
         - name: NAMESPACE
           valueFrom:
@@ -64,6 +64,8 @@ spec:
         #!/usr/bin/env bash
         set -e
 
+        ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+
         APP_NAME="$(params.app-name)"
         SHA="$(params.sha)"
 
@@ -77,7 +79,6 @@ spec:
           PROTOCOL="https"
         fi
 
-        sudo apk add --update --no-cache openssh
         git config --global user.email "gitops@cloudnativetoolkit.dev"
         git config --global user.name "Pipeline"
         # echo "git clone ${BRANCH_CMD} ${PROTOCOL}@<PERSONAL_ACCESS_TOKEN>@${GIT_HOST}:${GIT_ORG}/${GIT_REPO}"
