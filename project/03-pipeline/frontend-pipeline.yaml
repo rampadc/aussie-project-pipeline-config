@@ -45,30 +45,31 @@ spec:
     - name: kustomize
       taskRef:
         kind: Task
-        name: kustomize-build
+        name: kustomize-build-dyn
       params:
         - name: image-with-tag
-          # value: image-registry.openshift-image-registry.svc:5000/aussie-project/nationalparks:464cfd7f59f1912afb0c6fe556201dfb9a9f9907
           value: $(params.image-repo):$(tasks.clone-repository.results.commit)
+        - name: existing-image-name
+          value: parksmap-web/image
       runAfter:
         - build
       workspaces:
         - name: source
           workspace: pipeline-shared-data
-    # - name: gitops
-    #   taskRef:
-    #     kind: Task
-    #     name: gitops
-    #   workspaces:
-    #     - name: source
-    #       workspace: pipeline-shared-data
-    #   params:
-    #     - name: app-name
-    #       value: "$(params.app-name)"
-    #     - name: sha
-    #       value: "$(tasks.clone-repository.results.commit)"
-    #   runAfter:
-    #     - kustomize
+    - name: gitops
+      taskRef:
+        kind: Task
+        name: gitops
+      workspaces:
+        - name: source
+          workspace: pipeline-shared-data
+      params:
+        - name: app-name
+          value: "$(params.app-name)"
+        - name: sha
+          value: "$(tasks.clone-repository.results.commit)"
+      runAfter:
+        - kustomize
     - name: apply-manifests
       taskRef:
         name: apply-manifests
